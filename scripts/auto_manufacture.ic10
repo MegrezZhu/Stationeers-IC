@@ -1,0 +1,49 @@
+alias machine d0
+alias stacker d1
+
+alias originalStackSetting r9
+
+s machine ClearMemory 1
+s stacker ClearMemory 1
+s stacker Lock 0
+s stacker Activate 0
+
+main:
+	yield
+	
+	l r0 machine Open # whether the machine is pumping out materials
+	beq r0 1 opening
+	beqal r0 0 notOpening
+	
+	l r0 machine Activate
+	bne r0 1 idle # skip if not active
+	
+	l r0 machine ExportCount # number of items produced
+	s db Setting r0 # debug print
+	
+	# value setting of stacker -> desired #item
+	l r1 stacker Setting
+	
+	bgeal r0 r1 reachTarget
+	
+j main
+
+idle:
+s machine ClearMemory 1
+s stacker ClearMemory 1
+j start
+
+reachTarget:
+s machine Activate 0
+s machine ClearMemory 1
+s stacker ClearMemory 1
+j re
+
+opening:
+s stacker Setting 200
+s stacker Activate 1
+j start
+
+notOpening:
+s stacker Activate 0
+j ra
