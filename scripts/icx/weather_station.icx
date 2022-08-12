@@ -1,0 +1,27 @@
+use comments
+use loop
+
+# weather_station.icx
+
+alias WeatherStation d0
+alias ForecastLED d1
+
+# 0: 
+# 1: 
+# 2: 
+var mode = WeatherStation.Mode
+
+switch mode
+	case 0 # No storm
+		ForecastLED.Color = 2 # Green
+	end
+	case 1 # Storm Incoming
+		ForecastLED.Color = 5 # Yellow
+	end
+	case 2 # In storm
+		ForecastLED.Color = 4 # Red
+	end
+end
+
+var nextEventCountdown = WeatherStation.NextWeatherEventTime
+ForecastLED.Setting = nextEventCountdown

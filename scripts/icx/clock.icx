@@ -1,0 +1,46 @@
+use comments
+use loop
+
+# clock.icx
+
+alias SunAngleSensor d0
+alias SunRisingSensor d1
+alias HourLED d2
+alias MinuteLED d3
+
+#! Sensor panel facing up, sides facing east/west
+#! Vertical:
+#!   180 (mid-night, 00:00) -> 90 -> 0 (noon, 12:00) -> 90 -> 180 (24:00)
+var sunAngle = SunAngleSensor.Vertical
+
+#! After adjustment, ranges [0, 360), where 0 is start of the day
+var adjustedAngle
+
+var isAm = 0
+checkIsAM()
+
+if isAm == 1
+	adjustedAngle = 180 - sunAngle
+else
+	adjustedAngle = 180 + sunAngle
+end
+
+#! Maps [0, 360) to [0, 1440)
+var time = adjustedAngle * 4
+var hour = time / 60
+hour = trunc(hour)
+var minute = mod(time,60)
+minute = trunc(minute)
+
+HourLED.Setting = hour
+MinuteLED.Setting = minute
+
+function checkIsAM
+	#! Sensor panel facing east, sides facing up/down
+	#! Vertical:
+	#!   90 (mid-night, 00:00) -> 0 -> 90 (noon, 12:00) -> 180 -> 0 (24:00)
+	var sunRisingAngle = SunRisingSensor.Vertical
+	if sunRisingAngle <= 90
+		isAm = 1
+	end
+end
