@@ -1,0 +1,109 @@
+# sensor ports
+alias gasSensor d0
+
+# temperture related ports
+# TempSet should be connected to a dial/memory 
+alias tempMem d1
+# tempDisplay should be connected to a displayer
+alias tempDisplay d2
+
+# pressure related ports
+# outVent should be connected to an active vent
+alias outVent d3
+# inVent should be connected to an active vent
+alias inVent d4
+# presDisplay should be connected to a displayer
+alias presDisplay d5
+
+# temperture related registers 
+# rTempSet - tempThreshold < rTempCurr < rTempSet + tempThreshold
+alias rTempSet r0
+alias rTempCurr r1
+alias rUpperLimitTemp r2
+alias rLowerLimitTemp r3
+
+# pressure related registers 
+alias rPresCurr r4
+alias rUpperLimitPres r5
+alias rLowerLimitPres r6 
+
+define wallCooler -739292323
+define wallHeater 24258244
+define tempThreshold 2
+
+# set pressure 
+define expectedPressure 110
+# expectedPressure - pressureThreshold < pressure < expectedPressure + pressureThreshold
+define pressureThreshold 2
+
+
+outerLoop:
+  yield
+  j tempLoop 
+
+tempLoop:
+  yield
+
+  l rTempSet tempMem Setting
+  l rTempCurr gasSensor Temperature
+  # K to C
+  sub rTempCurr rTempCurr 273
+  s tempDisplay Setting rTempCurr
+
+  sub rLowerLimitTemp rTempSet tempThreshold
+  add rUpperLimitTemp rTempSet tempThreshold
+
+  bgt rTempCurr rUpperLimitTemp coolerOn
+  blt rTempCurr rLowerLimitTemp heaterOn
+  
+  # reset
+  sb wallCooler On 0
+  sb wallHeater On 0
+  s tempDisplay Color 2
+  j pressureLoop
+
+# turn on cooler
+coolerOn:
+  sb wallCooler On 1
+  sb wallHeater On 0
+  s tempDisplay Color 4
+  j pressureLoop
+
+# turn on heater
+heaterOn:
+  sb wallHeater On 1
+  sb wallCooler On 0
+  s tempDisplay Color 6
+  j pressureLoop
+
+pressureLoop:
+  yield
+
+  l rPresCurr gasSensor Pressure
+  s presDisplay Setting rPresCurr
+
+  sub rLowerLimitPres expectedPressure pressureThreshold
+  add rUpperLimitPres expectedPressure pressureThreshold
+
+  bgt rPresCurr rUpperLimitPres ventOut
+  blt rPresCurr rLowerLimitPres ventIn
+  
+  # reset
+  s inVent On 0
+  s outVent On 0
+  s presDisplay Color 2
+  j outerLoop
+
+# vent out gas
+ventOut:
+  s outVent On 1
+  s inVent On 0
+  s presDisplay Color 4
+  j outerLoop
+
+# vent in gas
+ventIn:
+  s outVent On 0
+  s inVent 1
+  s presDisplay Color 6
+  j outerLoop
