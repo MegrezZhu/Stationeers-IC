@@ -1,0 +1,26 @@
+use comment
+use loop
+
+# rocket_station.icx
+
+alias RocketAutomation d0
+alias CollectableGoodsReader d1
+alias ModeLED d2
+alias FuelLED d3
+alias CargoLED d4
+alias MineableLED d5
+
+const ROCKET_AUTOMATION = 1556756312
+const ROCKET_SILO = 906210602
+
+var mode = RocketAutomation.Mode
+ModeLED.Setting = mode
+
+var fuel = RocketAutomation.Fuel
+FuelLED.Setting = fuel
+
+var goods = CollectableGoodsReader.Setting
+MineableLED.Setting = goods
+
+var quantity = d(ROCKET_SILO).Quantity(Sum)
+CargoLED.Setting = quantity

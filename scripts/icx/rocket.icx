@@ -1,0 +1,126 @@
+use loop
+use comment
+
+# rocket.icx
+
+const MODE_IDLE = 0
+const MODE_LAUNCH = 1
+const MODE_TRAVELING = 2
+const MODE_ARRIVING = 3
+const MODE_IDLE_IN_SPACE = 4
+const MODE_RETURNING = 5
+const MODE_RETURNED = 6
+const MODE_OUT_OF_FUEL = 7
+
+const ROCKET_ORE_MINING_HASH = -2027419821
+const ROCKET_ICE_MINING_HASH = 74521920
+const ROCKET_SILO_HASH = 906210602
+const ROCKET_FUEL_TANK_HASH = -505333199
+
+const MAX_FUEL = 3500
+const MAX_SILO_QUANTITIES = 600
+
+alias RocketAutomation d0
+alias FuelSwitch d1
+alias CargoSwitch d2
+# alias MiningSwitch d3
+alias LaunchSwitch d4
+# strange workaround for collectable goods
+alias WeirdReader d5
+
+var currentMode = RocketAutomation.Mode
+
+var needReturnNow = 0
+
+#  Condition 1: fuel low
+var currentFuel = RocketAutomation.Fuel
+var returnFuelCost = RocketAutomation.ReturnFuelCost
+returnFuelCost = returnFuelCost + 100 # some leeway
+if currentFuel <= returnFuelCost
+  needReturnNow = 1
+end
+
+#  Condition 2: home instruction
+var launchSwitchOpen = LaunchSwitch.Open
+if launchSwitchOpen == 0
+  needReturnNow = 1
+end
+
+#  Condition 3: cargo full
+var siloItemCount = d(ROCKET_SILO_HASH).Quantity(Sum)
+if siloItemCount >= MAX_SILO_QUANTITIES
+  needReturnNow = 1
+end
+
+if needReturnNow == 1
+  stopAndReturn()
+end
+
+currentMode = RocketAutomation.Mode
+
+# State machine...
+if currentMode == MODE_IDLE
+  currentFuel = RocketAutomation.Fuel
+  if currentFuel >= MAX_FUEL
+    FuelSwitch.Open = 0
+  end
+
+  var cargoSwitchOpen = CargoSwitch.Open
+  d(ROCKET_SILO_HASH).Open = cargoSwitchOpen
+
+	launchSwitchOpen = LaunchSwitch.Open
+	if launchSwitchOpen == 1
+    reset()
+    RocketAutomation.Activate = MODE_LAUNCH
+	end
+end
+if currentMode == MODE_IDLE_IN_SPACE
+  # Gets .CollectableGoods
+	var hasGoods = WeirdReader.Setting
+	if hasGoods == 1
+      startMining()
+    else
+      stopMining()
+      # Start traveling to new places
+      RocketAutomation.Activate = MODE_TRAVELING
+	end
+end
+# MODE_TRAVELING: Just wait.
+# MODE_ARRIVING: Just wait.
+# MODE_RETURNING: Just wait.
+# MODE_RETURNED: Just wait. Will transition to MODE_IDLE
+# MODE_OUT_OF_FUEL: Death, end, nothing.
+
+yield
+
+
+function startMining
+    d(ROCKET_ORE_MINING_HASH).Activate = 1
+    d(ROCKET_ICE_MINING_HASH).Activate = 1
+end
+
+function stopMining
+    d(ROCKET_ORE_MINING_HASH).Activate = 0
+    d(ROCKET_ICE_MINING_HASH).Activate = 0
+end
+
+function stopAndReturn
+    push ra
+    stopMining()
+    pop ra
+
+    # Not already returning
+    if currentMode != MODE_RETURNING && currentMode != MODE_RETURNED && currentMode != MODE_IDLE
+        RocketAutomation.Activate = MODE_RETURNING
+    end
+end
+
+function reset
+    d(ROCKET_SILO_HASH).Open = 0
+    FuelSwitch.Open = 0
+    RocketAutomation.ClearMemory = 1
+    d(ROCKET_SILO_HASH).ClearMemory = 1
+    d(ROCKET_ICE_MINING_HASH).ClearMemory = 1
+    d(ROCKET_ORE_MINING_HASH).ClearMemory = 1
+    yield
+end
