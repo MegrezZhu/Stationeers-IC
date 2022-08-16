@@ -17,7 +17,7 @@ const ROCKET_ICE_MINING_HASH = 74521920
 const ROCKET_SILO_HASH = 906210602
 const ROCKET_FUEL_TANK_HASH = -505333199
 
-const MAX_FUEL = 3500
+const MAX_FUEL = 5000
 const MAX_SILO_QUANTITIES = 600
 
 alias RocketAutomation d0
@@ -78,12 +78,21 @@ if currentMode == MODE_IDLE_IN_SPACE
   # Gets .CollectableGoods
 	var hasGoods = WeirdReader.Setting
 	if hasGoods == 1
-      startMining()
-    else
-      stopMining()
-      # Start traveling to new places
-      RocketAutomation.Activate = MODE_TRAVELING
+    startMining()
+  else
+    stopMining()
+    yield
+    # Experimental workaround: https://www.reddit.com/r/Stationeers/comments/n9dcoa/rocket_problems/
+    RocketAutomation.Activate = MODE_ARRIVING
+    yield
+    # Start traveling to new places
+    RocketAutomation.Activate = MODE_TRAVELING
+    sleep 2
 	end
+end
+if currentMode == MODE_RETURNED
+  CargoSwitch.Open = 1
+  LaunchSwitch.Open = 0
 end
 # MODE_TRAVELING: Just wait.
 # MODE_ARRIVING: Just wait.
@@ -113,11 +122,14 @@ function stopAndReturn
     if currentMode != MODE_RETURNING && currentMode != MODE_RETURNED && currentMode != MODE_IDLE
         RocketAutomation.Activate = MODE_RETURNING
     end
+
+    LaunchSwitch.Open = 0
 end
 
 function reset
     d(ROCKET_SILO_HASH).Open = 0
     FuelSwitch.Open = 0
+    CargoSwitch.Open = 0
     RocketAutomation.ClearMemory = 1
     d(ROCKET_SILO_HASH).ClearMemory = 1
     d(ROCKET_ICE_MINING_HASH).ClearMemory = 1

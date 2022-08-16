@@ -1,0 +1,39 @@
+use loop
+
+const TEMPERATURE_UPPER = -8 + 273
+const TEMPERATURE_LOWER = -12 + 273
+
+alias SortingRoomGasSensor d0
+alias SortingRoomVentIn d1
+alias ExternalGasSensor d2
+alias CoolantValve d3
+
+const VENT_OUTWARD = 0
+const VENT_INWARD = 1
+
+const WALL_COOLER_HASH = -739292323
+
+var currentTemp = SortingRoomGasSensor.Temperature
+if currentTemp >= TEMPERATURE_UPPER
+  d(WALL_COOLER_HASH).On = 1
+end
+if currentTemp <= TEMPERATURE_LOWER
+  d(WALL_COOLER_HASH).On = 0
+end
+
+var currentPressure = SortingRoomGasSensor.Pressure
+if currentPressure <= 10
+  SortingRoomVentIn.Mode = VENT_INWARD
+  SortingRoomVentIn.On = 1
+else
+  SortingRoomVentIn.On = 0
+end
+
+var externalTemp = ExternalGasSensor.Temperature
+if externalTemp >= 273
+  CoolantValve.On = 0
+else
+  CoolantValve.On = 1
+end
+
+db.Setting = currentTemp

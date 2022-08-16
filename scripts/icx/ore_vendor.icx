@@ -1,0 +1,63 @@
+use loop
+use comment
+
+# ore_vendor.icx
+
+alias VendingMachine d0
+alias SelectDial d1
+alias DispenseButton d3
+
+var selected = SelectDial.Setting
+var hash
+
+switch selected
+  case 0
+    # Coal
+    hash = 1724793494
+  end
+  case 1
+    # Copper
+    hash = -707307845
+  end
+  case 2
+    # Iron
+    hash = 1758427767
+  end
+  case 3
+    # Nickel
+    hash = 1830218956
+  end
+  case 4
+    # Silicon
+    hash = 1103972403
+  end
+  case 5
+    # Uranium
+    hash = -1516581844
+  end
+  case 6
+    # Cobalt
+    hash = -983091249
+  end
+  case 7
+    # Gold
+    hash = -1348105509
+  end
+  case 8
+    # Lead
+    hash = -190236170
+  end
+  case 9
+    # Silver
+    hash = -916518678
+  end
+end
+
+db.Setting = hash
+
+var triggered = DispenseButton.Activate
+if triggered == 1
+  VendingMachine.RequestHash = hash
+end
+
+yield
