@@ -1,0 +1,152 @@
+alias TargetMem d0
+alias TargetMol d1
+alias HotPump d2
+alias ColdPump d3
+alias HotAnalyzer d4
+alias ColdAnalyzer d5
+# TODO: change to Mol instead -> more accurate control over amount of gas
+
+const APPROX = 0.001
+const R = 8.31446261
+const MAX_PUMP_VOL = 100
+
+# Heat capacity of gases
+const C_X = 24.8
+const C_CO2 = 28.2
+const C_H2 = 20.4
+const C_O2 = 21.1
+const C_N2 = 20.6
+# Actually this should be C_N2O but strangely it is an error
+const C_NO = 23.0
+const C_WATER = 72
+
+main:
+
+yield
+
+var cHot = 0
+var cCold = 0
+# temp value
+var temp
+
+temp = HotAnalyzer.RatioCarbonDioxide
+cHot = cHot + temp * C_CO2
+temp = HotAnalyzer.RatioPollutant
+cHot = cHot + temp * C_X
+# temp = HotAnalyzer.RatioOxygen
+# cHot = cHot + temp * C_O2
+# temp = HotAnalyzer.RatioVolatiles
+# cHot = cHot + temp * C_H2
+temp = HotAnalyzer.RatioNitrogen
+cHot = cHot + temp * C_N2
+# temp = HotAnalyzer.RatioNitrousOxide
+# cHot = cHot + temp * C_NO
+# temp = HotAnalyzer.RatioWater
+# cHot = cHot + temp * C_WATER
+
+temp = ColdAnalyzer.RatioCarbonDioxide
+cCold = cCold + temp * C_CO2
+temp = ColdAnalyzer.RatioPollutant
+cCold = cCold + temp * C_X
+# temp = ColdAnalyzer.RatioOxygen
+# cCold = cCold + temp * C_O2
+# temp = ColdAnalyzer.RatioVolatiles
+# cCold = cCold + temp * C_H2
+temp = ColdAnalyzer.RatioNitrogen
+cCold = cCold + temp * C_N2
+# temp = ColdAnalyzer.RatioNitrousOxide
+# cCold = cCold + temp * C_NO
+# temp = ColdAnalyzer.RatioWater
+# cCold = cCold + temp * C_WATER
+
+var targetMol = TargetMol.Setting
+var targetTemp = TargetMem.Setting
+if targetTemp == 0 || targetMol == 0
+  # Idle
+  db.Setting = 300
+  # db.Setting = cCold
+  j main
+end
+
+var hotTemp = HotAnalyzer.Temperature
+var hotPressure = HotAnalyzer.Pressure
+var coldTemp = ColdAnalyzer.Temperature
+var coldPressure = ColdAnalyzer.Pressure
+
+if targetTemp > hotTemp
+  # Target too high
+  db.Setting = 401
+  j main
+end
+
+if targetTemp < coldTemp
+  # Target too cold
+  db.Setting = 402
+  j main
+end
+
+var hotOnly = -1
+var q = -1
+
+# approximately equal
+temp = sap(hotTemp,targetTemp,APPROX)
+if temp == 1
+  # Using hot gas only
+  db.Setting = 201
+  hotOnly = 1
+  pump()
+  j main
+end
+
+temp = sap(coldTemp,targetTemp,APPROX)
+if temp == 1
+  # Using cold gas only
+  db.Setting = 202
+  hotOnly = 0
+  pump()
+  j main
+end
+
+# q = coldPressure / hotPressure
+q = coldPressure / hotPressure * cCold / cHot
+q = q * (targetTemp / coldTemp - 1)
+q = q / (1 - targetTemp / hotTemp)
+
+db.Setting = 200
+pump()
+j main
+
+function pump
+  if q < 0
+    if hotOnly == 1
+      temp = targetMol * R * hotTemp / hotPressure
+      temp = min(temp,MAX_PUMP_VOL)
+      HotPump.Setting = temp
+      ColdPump.Setting = 0
+    else
+      temp = targetMol * R * coldTemp / coldPressure
+      temp = min(temp,MAX_PUMP_VOL)
+      HotPump.Setting = 0
+      ColdPump.Setting = temp
+    end
+  else
+    temp = (1 + q) * targetMol * R / (hotPressure * q / hotTemp + coldPressure / coldTemp)
+    var factor = 1.0
+    if temp > MAX_PUMP_VOL
+      factor = MAX_PUMP_VOL / temp
+    end
+    temp = temp * q / (1 + q)
+    HotPump.Setting = temp
+    temp = temp / q
+    ColdPump.Setting = temp
+  end
+
+  HotPump.On = 1
+  ColdPump.On = 1
+  yield
+  HotPump.On = 0
+  ColdPump.On = 0
+  TargetMol.Setting = 0
+end
+
+endd:

@@ -1,0 +1,28 @@
+alias CoolTank d0
+alias CoolPump d1
+alias WasteTank d2
+alias WasteVent d3
+
+const MAX_PRESSURE = 45 * 1000
+const MAX_COOL_TEMP = 273 + 400
+
+CoolPump.Setting = 50
+
+var coolTemp = CoolTank.Temperature
+var coolPressure = CoolTank.Pressure
+var wasteTemp = WasteTank.Temperature
+var wastePressure = WasteTank.Pressure
+
+if wastePressure >= MAX_PRESSURE
+  WasteVent.On = 1
+else
+  WasteVent.On = 0
+end
+
+if coolTemp >= MAX_COOL_TEMP || coolPressure >= MAX_PRESSURE
+  CoolPump.On = 0
+else
+  CoolPump.On = 1
+end
+
+j 0

@@ -1,0 +1,47 @@
+alias HotTank d0
+alias FuelPump d1
+alias SafePump d2
+
+const MAX_PRESSURE = 45 * 1000
+const MAX_ADD_PRESSURE = 25 * 1000
+
+const MAX_RATIO = 0.025
+const MAX_MOLES = 50
+
+yield
+
+FuelPump.Setting = 50
+SafePump.Setting = 50
+
+var pressure = HotTank.Pressure
+var totalMoles = HotTank.TotalMoles
+var ratioOxygen = HotTank.RatioOxygen
+var ratioHydrogen = HotTank.RatioVolatiles
+
+if pressure >= MAX_PRESSURE
+  FuelPump.On = 0
+  SafePump.On = 1
+  db.Setting = 1
+  j 0
+else
+  SafePump.On = 0
+  db.Setting = 2
+end
+
+var oxygenMoles = totalMoles * ratioOxygen
+var hydrogenMoles = totalMoles * ratioHydrogen
+if ratioOxygen > MAX_RATIO || ratioHydrogen > MAX_RATIO || oxygenMoles >= MAX_MOLES || hydrogenMoles >= MAX_MOLES
+  FuelPump.On = 0
+  db.Setting = 3
+  j 0
+end
+
+if pressure >= MAX_ADD_PRESSURE
+  FuelPump.On = 0
+  db.Setting = 4
+else
+  db.Setting = 5
+  FuelPump.On = 1
+end
+
+j 0

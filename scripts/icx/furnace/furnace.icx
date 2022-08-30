@@ -1,0 +1,108 @@
+alias Furnace d0
+alias TargetTemperature d1
+alias TargetPressure d2
+alias AskTempMem d3
+alias AskMolMem d4
+alias Switch d5
+
+const DANGEROUS_PRESSURE = 55 * 1000
+const COLD_GAS_TEMP = 500
+const HOT_GAS_TEMP = 2000
+const R = 8.31446261
+const V = 1000
+const MAX_PUMP_VOL = 100
+
+main:
+
+yield
+
+var activated = Switch.Open
+if activated == 0
+  stop()
+  db.Setting = 300
+  j main
+end
+
+db.Setting = 0
+
+Furnace.SettingInput = 100
+Furnace.SettingOutput = 0
+AskMolMem.Setting = 0
+
+var targetTemp = TargetTemperature.Setting
+var targetPressure = TargetPressure.Setting
+
+if targetTemp == 0 || targetPressure == 0
+  clear()
+  db.Setting = 301
+  j main
+end
+
+var currPressure = Furnace.Pressure
+var currTemp = Furnace.Temperature
+var currMol = Furnace.TotalMoles
+
+if currPressure >= DANGEROUS_PRESSURE
+  Furnace.SettingInput = 0
+  Furnace.SettingOutput = 100
+  j main
+end
+
+var askTemp
+var askMol
+var outVol
+
+if currTemp == targetTemp
+  AskTempMem.Setting = targetTemp
+
+  if currPressure > targetPressure
+    outVol = (1 - targetPressure / currPressure) * V
+    outVol = min(outVol,MAX_PUMP_VOL)
+    Furnace.SettingOutput = outVol
+  else
+    askMol = (targetPressure - currPressure) * V / (R * targetTemp)
+    AskMolMem.Setting = askMol
+  end
+
+  j main
+end
+
+if currTemp < targetTemp
+  askTemp = HOT_GAS_TEMP
+else
+  askTemp = COLD_GAS_TEMP
+end
+AskTempMem.Setting = askTemp
+
+askMol = currMol * (targetTemp - currTemp) / (askTemp - targetTemp)
+
+# number of moles that need to be vent out in advance
+var preVent = currMol + askMol - targetPressure * V / (R * targetTemp)
+if preVent > 0
+  db.Setting = 201
+  AskMolMem.Setting = 0
+  outVol = preVent * R * currTemp / currPressure
+  outVol = min(outVol,MAX_PUMP_VOL)
+  Furnace.SettingOutput = outVol
+else
+  db.Setting = 202
+  AskMolMem.Setting = askMol
+end
+
+
+# TODO: make sure the gas is not combusting (i.e. existence of h2 and o2)
+
+j main
+
+function clear
+  AskTempMem.Setting = 0
+  AskMolMem.Setting = 0
+  Furnace.SettingOutput = 100
+end
+
+function stop
+  AskTempMem.Setting = 0
+  AskMolMem.Setting = 0
+  Furnace.SettingOutput = 0
+  Furnace.SettingInput = 0
+end
